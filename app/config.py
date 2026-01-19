@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings
@@ -13,7 +14,7 @@ class Settings(BaseSettings):
     log_format: str = "json"  # "json" for production, "console" for development
 
     # Redis
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     cache_ttl_seconds: int = 300  # 5 minutes
 
     # Open-Meteo API
