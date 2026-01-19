@@ -4,6 +4,7 @@ import structlog
 from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI
 from redis import asyncio as aioredis
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.api.router import api_router
 from app.config import get_settings
@@ -72,6 +73,9 @@ def create_app() -> FastAPI:
 
     # Include API routes
     app.include_router(api_router)
+
+    # Instrument Prometheus metrics
+    Instrumentator().instrument(app).expose(app)
 
     return app
 

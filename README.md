@@ -189,6 +189,106 @@ The GitHub Actions pipeline runs on push to main and pull requests:
 2. **Test**: pytest with coverage report
 3. **Build**: Docker image build
 
+## Deployment to AWS
+
+This project includes Terraform configurations and a Helm chart to deploy the application to AWS EKS.
+
+### Prerequisites
+
+- [Terraform](https://developer.hashicorp.com/terraform/install) (>= 1.0)
+- [Helm](https://helm.sh/docs/intro/install/) (>= 3.0)
+- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) (configured with credentials)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+
+### 1. Provision Infrastructure
+
+1. Navigate to the terraform directory:
+   ```bash
+   cd terraform
+   ```
+
+2. Initialize Terraform:
+   ```bash
+   terraform init
+   ```
+
+3. Plan and apply the changes:
+   ```bash
+   terraform apply
+   ```
+   Confirm the action by typing `yes`. This will create a VPC, EKS Cluster, and ECR repository.
+
+4. Retrieve the outputs:
+   ```bash
+   terraform output
+   ```
+   Note the `ecr_repository_url` and the `configure_kubectl` command.
+
+5. Configure `kubectl` to communicate with the new cluster (use the command from the output):
+   ```bash
+   aws eks --region us-east-1 update-kubeconfig --name weather-proxy-cluster
+   ```
+
+### 2. Build and Push Docker Image
+
+1. Authenticate Docker to your ECR registry:
+   ```bash
+   aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <YOUR_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+   ```
+
+2. Build the Docker image:
+   ```bash
+   docker build -t weather-proxy .
+   ```
+
+3. Tag the image:
+   ```bash
+   docker tag weather-proxy:latest <ECR_REPOSITORY_URL>:latest
+   ```
+
+4. Push the image:
+   ```bash
+   docker push <ECR_REPOSITORY_URL>:latest
+   ```
+
+### 3. Deploy Application with Helm
+
+1. Navigate to the project root.
+
+2. Install the Helm chart:
+   ```bash
+   helm install weather-proxy ./charts/weather-proxy \
+     --set image.repository=<ECR_REPOSITORY_URL> \
+     --set image.tag=latest
+   ```
+
+### 4. Verify Deployment
+
+1. Check the status of the pods:
+   ```bash
+   kubectl get pods
+   ```
+
+2. Get the Public URL (Load Balancer DNS):
+   ```bash
+   kubectl get svc weather-proxy
+   ```
+   Wait for the `EXTERNAL-IP` field to be populated (it may take a few minutes). It will look like `xxx.us-east-1.elb.amazonaws.com`.
+
+3. Test the public endpoint:
+   - Weather: `curl "http://<EXTERNAL-IP>/weather?city=Paris"`
+   - Health: `curl "http://<EXTERNAL-IP>/health"`
+   - Metrics: `curl "http://<EXTERNAL-IP>/metrics"`
+
+### 5. Cleanup
+
+To destroy the infrastructure:
+```bash
+helm uninstall weather-proxy
+cd terraform
+terraform destroy
+```
+
 ## Future Improvements
 
 Given more time, the following enhancements could be made:
