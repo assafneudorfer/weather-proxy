@@ -31,3 +31,14 @@ coverage.xml
 # OS files
 .DS_Store
 Thumbs.db
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.tfvars.json
+terraform.tfplan
+.terraform.lock.hcl
+.terraform.rc
+terraform.rc
+
